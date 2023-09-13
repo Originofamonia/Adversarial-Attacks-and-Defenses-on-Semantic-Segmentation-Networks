@@ -7,11 +7,11 @@ from torch.utils.data import DataLoader
 import torchvision
 from torchvision import models
 from torchvision import datasets, transforms as T
-from utils import result attack_image, IoUAcc, decode_segmap
+from utils import result, attack_image, IoUAcc, decode_segmap
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-%matplotlib inline
+# %matplotlib inline
 from sklearn.metrics import accuracy_score
 import numpy as np
 
