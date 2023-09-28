@@ -57,9 +57,10 @@ def IoUAcc(y_trg, y_pred, class_names=None):
 def pgd(model, X, y, epsilon, alpha, num_iter): # Untargetted Attack 1
     delta = torch.zeros_like(X, requires_grad=True)
     trg = y.squeeze(1)
+    loss_fn = nn.CrossEntropyLoss(ignore_index=255)
     
     for t in range(num_iter):
-        loss = nn.CrossEntropyLoss(ignore_index=255)(model(X + delta)['out'], trg.long())
+        loss = loss_fn(model(X + delta)['out'], trg.long())
         loss.backward()
         print('Loss after iteration {}: {:.2f}'.format(t+1, loss.item()))
         delta.data = (delta + X.shape[0]*alpha*delta.grad.data).clamp(-epsilon,epsilon)

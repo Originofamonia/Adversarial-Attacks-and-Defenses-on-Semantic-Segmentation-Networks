@@ -50,8 +50,8 @@ def main():
     X, y = torch.stack(X), torch.tensor(y).unsqueeze(1)
 
     #print(X.size(), y.size())
-
-    net = models.segmentation.deeplabv3_resnet101(pretrained=True, progress=True, num_classes=21, aux_loss=None).eval() #Any pre-trained model from pytorch can be made used of.
+    # Any pre-trained model from pytorch can be made used of
+    net = models.segmentation.deeplabv3_resnet101(pretrained=True, progress=True, num_classes=21, aux_loss=None).eval()
 
     class_names = {1:'background', 2:'aeroplane', 3:'bicycle', 4:'bird', 5:'boat', 6:'bottle', 7:'bus', 8:'car', 9:'cat',
                 10:'chair', 11:'cow', 12:'diningtable', 13:'dog', 14:'horse', 15:'motorbike', 16:'person', 17:'pottedplant',
@@ -63,7 +63,8 @@ def main():
     clean_iou, clean_acc = IoUAcc(y, pred, class_names)
     print(f"clean_iou, clean_acc: {clean_iou, clean_acc}")
 
-    delta1 = pgd(net, X, y, epsilon=0.10, alpha=1e2, num_iter=10) # Various values of epsilon, alpha can be used to play with.
+    # Various values of epsilon, alpha can be used to play with.
+    delta1 = pgd(net, X, y, epsilon=0.10, alpha=1e2, num_iter=10)
     adv_images = X.float()+ delta1.float()
     ypa1 = net(adv_images)['out']
     n = torch.softmax(ypa1,1) 
@@ -79,7 +80,6 @@ def main():
     preda1 = preda1.detach().cpu().numpy()
 
     for i, x_clean in enumerate(denormed_x):
-        print(x_clean)
         x_adv = denormed_adv_x[i]
         y_true = y[i]
         y_pred_clean = pred[i]

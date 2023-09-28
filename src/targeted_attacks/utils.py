@@ -40,7 +40,7 @@ def pgd_targ(model, X_, y, epsilon, alpha, num_iter, y_targ): # Targeted Attack 
         y_new = get_trg_class(y, y_targ)
         y_,_ = torch.max(y_new,1)
     else:
-        y_ = torch.stack((y_targ,)*X.shape[0],0).squeeze(1)
+        y_ = torch.stack((y_targ,)*X_.shape[0],0).squeeze(1)
 
     for t in range(num_iter):
         yp = model(X_.float() + delta.float())['out']
@@ -71,4 +71,3 @@ def decode_segmap(image, nc=21): # visualise the decoded prediction (pred)
 
     rgb = torch.stack([r, g, b], axis=3)
     return rgb
-
