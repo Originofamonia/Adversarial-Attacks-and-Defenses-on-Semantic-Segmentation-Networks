@@ -8,14 +8,29 @@ from utils import decode_segmap, IoUAcc, pgd, pgd_steep
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-# %matplotlib inline
+from torchvision.transforms.functional import normalize
 from sklearn.metrics import accuracy_score
 import numpy as np
 
+class Denormalize(object):
+    def __init__(self, mean, std):
+        mean = np.array(mean)
+        std = np.array(std)
+        self._mean = -mean/std
+        self._std = 1/std
+
+    def __call__(self, tensor):
+        if isinstance(tensor, np.ndarray):
+            return (tensor - self._mean.reshape(-1,1,1)) / self._std.reshape(-1,1,1)
+        return normalize(tensor, self._mean, self._std)
+
+
 def main():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
     torch.cuda.empty_cache()
+
+    denorm = Denormalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
     batch_size = 4
 
@@ -45,13 +60,57 @@ def main():
     yp = net(X)['out']
     m = torch.softmax(yp,1)
     pred = torch.argmax(m,1)
-    IoUAcc(y, pred, class_names)
+    clean_iou, clean_acc = IoUAcc(y, pred, class_names)
+    print(f"clean_iou, clean_acc: {clean_iou, clean_acc}")
 
     delta1 = pgd(net, X, y, epsilon=0.10, alpha=1e2, num_iter=10) # Various values of epsilon, alpha can be used to play with.
-    ypa1 = net((X.float()+ delta1.float()))['out']
+    adv_images = X.float()+ delta1.float()
+    ypa1 = net(adv_images)['out']
     n = torch.softmax(ypa1,1) 
     preda1 = torch.argmax(n,1)
     IoUa1, Acca1 = IoUAcc(y, preda1, class_names)
+    print(f'IoUa1, Acca1: {IoUa1, Acca1}')
+    denormed_x = denorm(X)  # returns [0,1]
+    denormed_x = denormed_x.permute(0, 2, 3, 1).detach().cpu().numpy()
+    denormed_adv_x = denorm(adv_images)
+    denormed_adv_x = denormed_adv_x.permute(0, 2, 3, 1).detach().cpu().numpy()
+    y = y.permute(0, 2, 3, 1).detach().cpu().numpy()
+    pred = pred.detach().cpu().numpy()
+    preda1 = preda1.detach().cpu().numpy()
+
+    for i, x_clean in enumerate(denormed_x):
+        print(x_clean)
+        x_adv = denormed_adv_x[i]
+        y_true = y[i]
+        y_pred_clean = pred[i]
+        y_pred_adv = preda1[i]
+        fig, axs = plt.subplots(2, 3, figsize=(14, 6))
+        axs[0,0].imshow(x_clean)
+        axs[0,0].set_title(f'Clean image')
+        axs[0,0].axis('off')
+
+        axs[0,1].imshow(x_clean)
+        axs[0,1].imshow(y_true, cmap='viridis', alpha=0.5)
+        axs[0,1].set_title(f'y_true')
+        axs[0,1].axis('off')
+
+        axs[0,2].imshow(x_clean)
+        axs[0,2].imshow(y_pred_clean, cmap='viridis', alpha=0.5)
+        axs[0,2].set_title(f'Clean y_pred')
+        axs[0,2].axis('off')
+
+        axs[1,0].imshow(x_adv)
+        axs[1,0].set_title(f'Adv image')
+        axs[1,0].axis('off')
+
+        axs[1,1].imshow(x_adv)
+        axs[1,1].imshow(y_pred_adv, cmap='viridis', alpha=0.5)
+        axs[1,1].set_title(f'Adv y_pred')
+        axs[1,1].axis('off')
+
+        img_filename = f'output/{i}_overlay.png'
+        fig.savefig(img_filename, bbox_inches='tight', pad_inches=0)
+        plt.close()
 
 
 if __name__ == '__main__':
